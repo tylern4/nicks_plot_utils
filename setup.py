@@ -1,5 +1,8 @@
 from setuptools import setup
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setup(
     name='nicks_plot_utils',
     version='1.0.0',
@@ -8,6 +11,8 @@ setup(
     author='Nick Tyler',
     author_email='nicholas.s.tyler.4@gmail.com',
     license='BSD 2-clause',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=['nicks_plot_utils'],
     install_requires=['matplotlib',
                       'numpy',
@@ -26,4 +31,5 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
     ],
+    python_requires='>=3.5',
 )
