@@ -72,32 +72,50 @@ class Hist2D(bh.Histogram):
         return super(Hist2D, self).fill(data_x, data_y)
 
     def _gaussian2D(self, x, y, cen_x, cen_y, sig_x, sig_y, offset):
-        return np.exp(-(((cen_x-x)/sig_x)**2 + ((cen_y-y)/sig_y)**2)/2.0) + offset
+        func = np.exp(-(((cen_x-x)/sig_x)**2 + ((cen_y-y)/sig_y)**2)/2.0)
+        return func + offset
+
+    def gaussian2D(self, x, y, height, cen_x, cen_y, sig_x, sig_y, offset):
+        func = np.exp(-(((cen_x-x)/sig_x)**2 +
+                        ((cen_y-y)/sig_y)**2)/2.0)
+        return (height * (func + offset)).ravel()
 
     def _residuals(self, p, x, y, z):
         height = p["height"].value
-        cen_x = p["centroid_x"].value
-        cen_y = p["centroid_y"].value
+        cen_x = p["cen_x"].value
+        cen_y = p["cen_y"].value
         sigma_x = p["sigma_x"].value
         sigma_y = p["sigma_y"].value
-        offset = p["background"].value
+        offset = p["offset"].value
         return (z - height*self._gaussian2D(x, y, cen_x, cen_y, sigma_x, sigma_y, offset))
 
-    def fitGausian(self, ax=None):
+    def fitGausian(self, ax=None, label: bool = False):
         if not ax:
             ax = plt.gca()
         initial = Parameters()
         initial.add("height", value=1.)
-        initial.add("centroid_x", value=0.)
-        initial.add("centroid_y", value=0.)
+        initial.add("cen_x", value=0.)
+        initial.add("cen_y", value=0.)
         initial.add("sigma_x", value=1.)
         initial.add("sigma_y", value=3.)
-        initial.add("background", value=0.)
+        initial.add("offset", value=0.)
 
         x, y = self.axes.edges.T
         areas = functools.reduce(operator.mul, self.axes.widths)
         g = self.view() / self.sum() / areas
-
+        g = g.T
         fit = minimize(self._residuals, initial, args=(x[:, 1:], y[1:, :], g))
+
+        X, Y = np.meshgrid(x[:, 1:], y[1:, :])
+        Z = self.gaussian2D(X, Y, fit.params['height'].value,
+                            fit.params['cen_x'].value,
+                            fit.params['cen_y'].value,
+                            fit.params['sigma_x'].value,
+                            fit.params['sigma_y'].value,
+                            fit.params['offset'].value).reshape(X.shape[0], Y.shape[0])
+        CS = ax.contour(X, Y, Z, colors='w', linestyles='-')
+        if label:
+            CS.levels = [f'{s:.2f}' for s in CS.levels]
+            ax.clabel(CS, CS.levels, inline=True, fmt=r'%r \%%', fontsize=10)
 
         return fit
