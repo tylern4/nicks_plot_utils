@@ -1,4 +1,3 @@
-from typing import List
 import boost_histogram as bh
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,86 +8,20 @@ from lmfit.models import *
 __ALPHA__ = 0.8
 
 
-class Hist1D(bh.Histogram):
-    """Hist1D is a wrapper around a boost histogram which sets up a 1D histogram and adds simples plots and fitting.
-
-    Args:
-        [Required]
-            bins -> int : Sets the number of bins to use
-        [Semi-Required]
-            xrange -> List [Required unless data is suplied)] Sets the xrange of the histogram
-        [Optional]
-            data -> Array like : Data to fill the histogram with
-            name -> string : Name to be used with automatic axes labes
-
-        *args, **kwargs are passed to bh.Histogram
-
-    """
-
-    def __init__(self,
-                 data=None,
-                 xrange: List = None,
-                 bins: float = 100,
+class Scatter:
+    def __init__(self, x, y,
                  name: str = None,
                  *args, **kwargs) -> None:
-
-        self.bins = bins
-        self.name = name
-        # Get the left and right bin edges either from range or dataset with fallbacks
-        if data is not None:
-            self.left = np.min(data)
-            self.right = np.max(data)
-        if xrange is not None:
-            if isinstance(xrange, list):
-                self.left = xrange[0]
-                self.right = xrange[1]
-            elif isinstance(xrange, float):
-                self.left = -1*np.abs(xrange)
-                self.right = np.abs(xrange)
-        try:
-            if self.left is None or self.right is None:
-                self.left = -1.0
-                self.right = 1.0
-        except AttributeError:
-            self.left = -1.0
-            self.right = 1.0
-            print("Need to start with data or set xrange=[left,right]")
-
-        # Once we have the bins and edges we can make out boost histogram object
-        super(Hist1D, self).__init__(bh.axis.Regular(self.bins, self.left, self.right, metadata=self.name),
-                                     *args, **kwargs)
+        self._x = x
+        self._y = y
         self.color = None
-        self.model = None
-        # If we started with data present then fill the histogram
-        if data is not None:
-            self.fill(data)
-        # Make a set of xs for plotting lines with 5x the number of points from the bins
-        self.xs = np.linspace(self.left, self.right, self.bins*5)
-
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, color=None, density: bool = True):
-        if not ax:
-            ax = plt.gca()
-        if not self.color:
-            self.color = next(ax._get_lines.prop_cycler)['color']
-        elif color:
-            self.color = color
-
-        x, y = self.hist_to_xy(density=density)
-        st = ax.step(x, y, where='mid', color=self.color,
-                     alpha=alpha,
-                     label=None if filled else self.axes[0].metadata)
-        if filled:
-            ys = self.view()/np.max(self.view()) if density else self.view()
-            st = ax.fill_between(x, 0, ys,
-                                 alpha=alpha,
-                                 step='mid',
-                                 color=self.color,
-                                 label=self.axes[0].metadata
-                                 )
-        if self.name:
-            ax.set_xlabel(self.name)
-        ax.legend()
-        return st
+        if isinstance(x, pd.Series):
+            self.x_name = x.name
+        if isinstance(x, pd.Series):
+            self.y_name = y.name
+        self.name = name
+        # Give fit range +- 1%
+        self.xs = np.linspace(np.min(self._x)*0.09, np.max(self._x)*1.01, 500)
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__, color=None, density: bool = True, label=None):
         if not ax:
@@ -98,56 +31,59 @@ class Hist1D(bh.Histogram):
         elif color:
             self.color = color
 
-        x, y = self.hist_to_xy(density=density)
+        label = label if label else self.name
 
-        label = label if label else self.axes[0].metadata
-
-        st = ax.errorbar(x, y,
-                         yerr=stats.sem(y),
+        st = ax.errorbar(self._x, self._y,
+                         yerr=stats.sem(self.y),
                          fmt='.',
                          alpha=alpha,
                          color=self.color,
                          label=label)
-        ax.set_xlabel(self.name)
-        ax.legend()
+        ax.set_xlabel(self.x_name)
+        ax.set_ylabel(self.y_name)
+        ax.set_title(self.name)
+        if label:
+            ax.legend()
+        return st
+
+    def scatter(self, ax=None, alpha: float = __ALPHA__, color=None, density: bool = True, label=None):
+        if not ax:
+            ax = plt.gca()
+        if not self.color:
+            self.color = next(ax._get_lines.prop_cycler)['color']
+        elif color:
+            self.color = color
+
+        label = label if label else self.name
+
+        st = ax.scatter(self._x, self._y,
+                        alpha=alpha,
+                        color=self.color,
+                        label=label)
+        ax.set_xlabel(self.x_name)
+        ax.set_ylabel(self.y_name)
+        ax.set_title(self.name)
+        if label:
+            ax.legend()
         return st
 
     @property
     def x(self):
-        return self.axes[0].centers
+        """I'm the 'x' property."""
+        return self._x
+
+    @x.setter
+    def x(self, value):
+        self._x = np.array(value)
 
     @property
     def y(self):
-        return self.view()/np.max(self.view())
+        """I'm the 'y' property."""
+        return self._y
 
-    @property
-    def y_counts(self):
-        return self.view()
-
-    def hist_to_xy(self, density: bool = True):
-        """Takes a histogram and makes it into a scatter of x,y
-        Useful for plotting in different ways and for fitting
-
-        Args:
-            density (bool, optional): Choose to plot y values or density of y values. Defaults to True.
-
-        Returns:
-            Tuple(x, y): Returns a tuple of np arrays for x and y values of histogram
-        """
-        # Check if we want density and set y accordingly
-        try:
-            y = self.y if density else self.y_counts
-        except:
-            y = self.y_counts
-
-        return (self.x, y)
-
-    def fill(self, data):
-        # If we pass in a pandas series then rename the axes to the series name
-        # Cool trick to not have to add labels to the histograms
-        if isinstance(data, pd.Series):
-            self.axes[0].metadata = data.name
-        return super(Hist1D, self).fill(data)
+    @y.setter
+    def y(self, value):
+        self._y = np.array(value)
 
     def fitGaussian(self, ax=None, alpha: float = __ALPHA__,
                     color=None, density: bool = True, params=None, plots: bool = True,
@@ -170,7 +106,6 @@ class Hist1D(bh.Histogram):
         elif color:
             self.color = color
 
-        x, y = self.hist_to_xy(density=density)
         num_comp = len(self.model.components)
 
         # If we haven't set up params set them up now
@@ -179,7 +114,7 @@ class Hist1D(bh.Histogram):
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
 
-        out = self.model.fit(y, params, x=x, nan_policy='omit')
+        out = self.model.fit(self._y, params, x=self._x, nan_policy='omit')
 
         if num_comp > 1 and plots:
             comps = out.eval_components(x=self.xs)

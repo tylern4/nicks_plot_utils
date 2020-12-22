@@ -1,3 +1,4 @@
+from typing import List
 import boost_histogram as bh
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,30 +12,86 @@ __ALPHA__ = 0.8
 
 
 class Hist2D(bh.Histogram):
+    """Hist2D is a wrapper around a boost histogram which sets up a 2D histogram and adds simples plots and fitting.
+
+    Args:
+        [Required]
+            _bins -> int : Sets the number of bins to use
+        [Semi-Required]
+            _range -> List [Required unless data is suplied)] Sets the xrange of the histogram
+        [Optional]
+            _data -> Array like : Data to fill the histogram with
+            _name -> string : Name to be used with automatic axes labes
+
+        *args, **kwargs are passed to bh.Histogram
+    """
+
     def __init__(self,
-                 x_left: float = -1,
-                 x_right: float = 1,
-                 x_bins: float = 100,
-                 x_name: str = None,
-                 y_left: float = -1,
-                 y_right: float = 1,
-                 y_bins: float = 100,
-                 y_name: str = None,
+                 xdata=None,
+                 ydata=None,
+
+                 xbins: float = 100,
+                 xrange: List = None,
+                 xname: str = None,
+
+                 ybins: float = 100,
+                 yrange: List = None,
+                 yname: str = None,
                  *args, **kwargs) -> None:
-        super(Hist2D, self).__init__(bh.axis.Regular(x_bins, x_left, x_right, metadata=x_name),
+
+        self.xbins = xbins
+        self.xname = xname
+        # Get the left and right bin edges either from range or dataset with fallbacks
+        if xdata is not None:
+            self.xleft = np.min(xdata)
+            self.xright = np.max(xdata)
+        if xrange is not None:
+            if isinstance(xrange, list):
+                self.xleft = xrange[0]
+                self.xright = xrange[1]
+            elif isinstance(xrange, float):
+                self.xleft = -1*np.abs(xrange)
+                self.xright = np.abs(xrange)
+        try:
+            if self.xleft is None or self.xright is None:
+                self.xleft = -1.0
+                self.xright = 1.0
+        except AttributeError:
+            self.xleft = -1.0
+            self.xright = 1.0
+            print("Need to start with data or set xrange=[left,right]")
+
+        self.ybins = ybins
+        self.yname = yname
+        # Get the left and right bin edges either from range or dataset with fallbacks
+        if ydata is not None:
+            self.yleft = np.min(ydata)
+            self.yright = np.max(ydata)
+        if xrange is not None:
+            if isinstance(yrange, list):
+                self.yleft = yrange[0]
+                self.yright = yrange[1]
+            elif isinstance(yrange, float):
+                self.yleft = -1*np.abs(yrange)
+                self.yright = np.abs(yrange)
+        try:
+            if self.yleft is None or self.yright is None:
+                self.yleft = -1.0
+                self.yright = 1.0
+        except AttributeError:
+            self.yleft = -1.0
+            self.yright = 1.0
+            print("Need to start with data or set yrange=[left,right]")
+
+        super(Hist2D, self).__init__(bh.axis.Regular(self.xbins, self.xleft, self.xright, metadata=self.xname),
                                      bh.axis.Regular(
-                                         y_bins, y_left, y_right, metadata=x_name),
+                                         self.ybins, self.yleft, self.yright, metadata=self.yname),
                                      *args, **kwargs)
         self.color = None
-        self.x_name = x_name
-        self.x_left = x_left
-        self.x_right = x_right
-        self.xs = np.linspace(x_left, x_right, 500)
-
-        self.y_name = y_name
-        self.y_left = y_left
-        self.y_right = y_right
-        self.ys = np.linspace(y_left, y_right, 500)
+        self.xs = np.linspace(self.xleft, self.xright, 5*self.xbins)
+        self.ys = np.linspace(self.yleft, self.yright, 5*self.ybins)
+        if xdata is not None and ydata is not None:
+            self.fill(xdata, ydata)
 
     def plot(self, ax=None,
              filled: bool = False, alpha: float = __ALPHA__,

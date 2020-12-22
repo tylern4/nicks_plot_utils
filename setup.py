@@ -14,6 +14,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=['nicks_plot_utils'],
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     install_requires=['matplotlib',
                       'numpy',
                       'boost-histogram',
