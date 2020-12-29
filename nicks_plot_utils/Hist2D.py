@@ -93,6 +93,9 @@ class Hist2D(bh.Histogram):
         if xdata is not None and ydata is not None:
             self.fill(xdata, ydata)
 
+    def __getitem__(self, args):
+        return "Slicing does not work...yet?"
+
     def plot(self, ax=None,
              filled: bool = False, alpha: float = __ALPHA__,
              cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True):
@@ -112,8 +115,37 @@ class Hist2D(bh.Histogram):
         pc = ax.pcolormesh(*self.axes.edges.T, zvalues.T,
                            cmap=cmap if cmap else 'viridis')
 
-        ax.set_xlabel(self.axes[0].metadata)
-        ax.set_ylabel(self.axes[1].metadata)
+        ax.set_xlabel(self.xname)
+        ax.set_ylabel(self.yname)
+        if colorbar:
+            plt.gcf().colorbar(pc, ax=ax, aspect=30)
+        return pc
+
+    def plot3D(self, ax=None,
+               filled: bool = False, alpha: float = __ALPHA__,
+               cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True):
+        fig = plt.gcf()
+        ax = plt.axes(projection='3d')
+        if not ax:
+            ax = plt.gca()
+        if density:
+            # Compute the areas of each bin
+            areas = functools.reduce(operator.mul, self.axes.widths)
+            # Compute the density
+            zvalues = self.view() / self.sum() / areas
+        else:
+            zvalues = self.view()
+
+        zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
+                                                 zvalues)
+
+        x, y = self.axes.edges.T
+        X, Y = np.meshgrid(x[:, 1:], y[1:, :])
+        pc = ax.contour3D(X, Y, zvalues.T, 500,
+                          cmap=cmap if cmap else 'viridis')
+
+        ax.set_xlabel(self.xname)
+        ax.set_ylabel(self.yname)
         if colorbar:
             plt.gcf().colorbar(pc, ax=ax, aspect=30)
         return pc

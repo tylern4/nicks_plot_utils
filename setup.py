@@ -1,11 +1,23 @@
 from setuptools import setup
 
+
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+
+with open("nicks_plot_utils/__version__", "r+", encoding="utf-8") as fh:
+    template = fh.read()
+    fh.seek(0)
+    version_parts = list(map(int, template.split('.')))
+    version_parts[-1] += 1
+    version_parts = list(map(str, version_parts))
+    version = ".".join(version_parts)
+    fh.write(version)
+
+
 setup(
     name='nicks_plot_utils',
-    version='1.0.0.1',
+    version=version,
     description='A example Python package',
     url='https://github.com/tylern4/nicks_plot_utils',
     author='Nick Tyler',
@@ -14,8 +26,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=['nicks_plot_utils'],
-    use_scm_version=True,
-    setup_requires=['setuptools_scm'],
+    # use_scm_version=True,
+    # setup_requires=['setuptools_scm'],
     install_requires=['matplotlib',
                       'numpy',
                       'boost-histogram',

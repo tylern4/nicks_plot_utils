@@ -65,7 +65,11 @@ class Hist1D(bh.Histogram):
         # Make a set of xs for plotting lines with 5x the number of points from the bins
         self.xs = np.linspace(self.left, self.right, self.bins*5)
 
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, color=None, density: bool = True):
+    def __getitem__(self, args):
+        return "Slicing does not work...yet?"
+
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
+                  color=None, density: bool = True, label: str = None):
         if not ax:
             ax = plt.gca()
         if not self.color:
@@ -74,16 +78,20 @@ class Hist1D(bh.Histogram):
             self.color = color
 
         x, y = self.hist_to_xy(density=density)
+
+        if not label:
+            label = self.axes[0].metadata
+
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
-                     label=None if filled else self.axes[0].metadata)
+                     label=None if filled else label)
         if filled:
             ys = self.view()/np.max(self.view()) if density else self.view()
             st = ax.fill_between(x, 0, ys,
                                  alpha=alpha,
                                  step='mid',
                                  color=self.color,
-                                 label=self.axes[0].metadata
+                                 label=label
                                  )
         if self.name:
             ax.set_xlabel(self.name)
