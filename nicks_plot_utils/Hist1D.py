@@ -9,7 +9,7 @@ from lmfit.models import *
 __ALPHA__ = 0.8
 
 
-class Hist1D(bh.Histogram):
+class Hist1D:
     """Hist1D is a wrapper around a boost histogram which sets up a 1D histogram and adds simples plots and fitting.
 
     Args:
@@ -55,18 +55,19 @@ class Hist1D(bh.Histogram):
             print("Need to start with data or set xrange=[left,right]")
 
         # Once we have the bins and edges we can make out boost histogram object
-        super(Hist1D, self).__init__(bh.axis.Regular(self.bins, self.left, self.right, metadata=self.name),
-                                     *args, **kwargs)
+        self.hist = bh.Histogram(bh.axis.Regular(self.bins, self.left, self.right, metadata=self.name),
+                                 *args, **kwargs)
         self.color = None
         self.model = None
         # If we started with data present then fill the histogram
         if data is not None:
-            self.fill(data)
+            self.hist.fill(data)
         # Make a set of xs for plotting lines with 5x the number of points from the bins
         self.xs = np.linspace(self.left, self.right, self.bins*5)
 
-    def __getitem__(self, args):
-        return "Slicing does not work...yet?"
+    @property
+    def data(self):
+        return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
                   color=None, density: bool = True, label: str = None):
@@ -80,13 +81,13 @@ class Hist1D(bh.Histogram):
         x, y = self.hist_to_xy(density=density)
 
         if not label:
-            label = self.axes[0].metadata
+            label = self.hist.axes[0].metadata
 
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
                      label=None if filled else label)
         if filled:
-            ys = self.view()/np.max(self.view()) if density else self.view()
+            ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
             st = ax.fill_between(x, 0, ys,
                                  alpha=alpha,
                                  step='mid',
@@ -98,20 +99,51 @@ class Hist1D(bh.Histogram):
         ax.legend()
         return st
 
-    def errorbar(self, ax=None, alpha: float = __ALPHA__, color=None, density: bool = True, label=None):
+    def errorbar(self, ax=None, alpha: float = __ALPHA__,
+                 color=None, density: bool = True, label=None,
+                 errorcalc=None):
         if not ax:
             ax = plt.gca()
-        if not self.color:
-            self.color = next(ax._get_lines.prop_cycler)['color']
-        elif color:
+
+        if color is not None:
             self.color = color
+        elif not self.color:
+            self.color = next(ax._get_lines.prop_cycler)['color']
 
         x, y = self.hist_to_xy(density=density)
 
-        label = label if label else self.axes[0].metadata
+        label = label if label else self.hist.axes[0].metadata
+
+        if type(errorcalc) is float or type(errorcalc) is int or type(errorcalc) is np.float64:
+            # If we have a number make array with the same number the same size as y
+            yerr = np.ones_like(y) * errorcalc
+        elif type(errorcalc) is np.ndarray:
+            # pass in errors from nd with errors
+            # Had to put these at the top to get rid of element wise comparison problems in numpy
+            if errorcalc.size == y.size:
+                # Check that they are the same size as the y values or errorbar will break
+                yerr = errorcalc
+            else:
+                print("Zero error bars assigned, ndarray and y are not the same size.")
+                yerr = np.zeros_like(y)
+        elif errorcalc is None or errorcalc == "" or errorcalc == "sem":
+            # Default to standard error of mean for errorbars
+            yerr = stats.sem(y)
+        elif errorcalc == "std":
+            # Use standard deviation
+            yerr = np.std(y)
+        elif errorcalc == "sqrt":
+            # Use sqrt(N) for errors
+            # Need more testing to make sure it follows statistics for density plots
+            yerr = np.sqrt(y)
+        elif callable(errorcalc):
+            # If we send in a function use that to compute the errors
+            yerr = errorcalc(y)
+        else:
+            yerr = np.zeros_like(y)
 
         st = ax.errorbar(x, y,
-                         yerr=stats.sem(y),
+                         yerr=yerr,
                          fmt='.',
                          alpha=alpha,
                          color=self.color,
@@ -122,15 +154,15 @@ class Hist1D(bh.Histogram):
 
     @property
     def x(self):
-        return self.axes[0].centers
+        return self.hist.axes[0].centers
 
     @property
     def y(self):
-        return self.view()/np.max(self.view())
+        return self.hist.view()/np.max(self.hist.view())
 
     @property
     def y_counts(self):
-        return self.view()
+        return self.hist.view()
 
     def hist_to_xy(self, density: bool = True):
         """Takes a histogram and makes it into a scatter of x,y
@@ -154,8 +186,8 @@ class Hist1D(bh.Histogram):
         # If we pass in a pandas series then rename the axes to the series name
         # Cool trick to not have to add labels to the histograms
         if isinstance(data, pd.Series):
-            self.axes[0].metadata = data.name
-        return super(Hist1D, self).fill(data)
+            self.hist.axes[0].metadata = data.name
+        return self.hist.fill(data)
 
     def fitGaussian(self, ax=None, alpha: float = __ALPHA__,
                     color=None, density: bool = True, params=None, plots: bool = True,
@@ -182,7 +214,7 @@ class Hist1D(bh.Histogram):
         num_comp = len(self.model.components)
 
         # If we haven't set up params set them up now
-        if params == None:
+        if params is None:
             pars = self.model.components[num_comp - 1].guess(y, x=x)
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
@@ -192,10 +224,10 @@ class Hist1D(bh.Histogram):
         if num_comp > 1 and plots:
             comps = out.eval_components(x=self.xs)
             for name, comp in comps.items():
-                ax.plot(self.xs, comp, label=name+"fit")
+                ax.plot(self.xs, comp, label=name+"fit", zorder=3)
         if plots:
             ax.plot(self.xs, out.eval(x=self.xs),
-                    label=self.model.name if num_comp == 1 else "Total Fit")
+                    label=self.model.name if num_comp == 1 else "Total Fit", zorder=3, lw=3)
 
             ax.legend()
         return out

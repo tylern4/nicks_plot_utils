@@ -11,7 +11,7 @@ import operator
 __ALPHA__ = 0.8
 
 
-class Hist2D(bh.Histogram):
+class Hist2D:
     """Hist2D is a wrapper around a boost histogram which sets up a 2D histogram and adds simples plots and fitting.
 
     Args:
@@ -83,18 +83,19 @@ class Hist2D(bh.Histogram):
             self.yright = 1.0
             print("Need to start with data or set yrange=[left,right]")
 
-        super(Hist2D, self).__init__(bh.axis.Regular(self.xbins, self.xleft, self.xright, metadata=self.xname),
-                                     bh.axis.Regular(
-                                         self.ybins, self.yleft, self.yright, metadata=self.yname),
-                                     *args, **kwargs)
+        self.hist = bh.Histogram(bh.axis.Regular(self.xbins, self.xleft, self.xright, metadata=self.xname),
+                                 bh.axis.Regular(
+                                     self.ybins, self.yleft, self.yright, metadata=self.yname),
+                                 *args, **kwargs)
         self.color = None
         self.xs = np.linspace(self.xleft, self.xright, 5*self.xbins)
         self.ys = np.linspace(self.yleft, self.yright, 5*self.ybins)
         if xdata is not None and ydata is not None:
-            self.fill(xdata, ydata)
+            self.hist.fill(xdata, ydata)
 
-    def __getitem__(self, args):
-        return "Slicing does not work...yet?"
+    @property
+    def data(self):
+        return self.hist
 
     def plot(self, ax=None,
              filled: bool = False, alpha: float = __ALPHA__,
@@ -103,16 +104,16 @@ class Hist2D(bh.Histogram):
             ax = plt.gca()
         if density:
             # Compute the areas of each bin
-            areas = functools.reduce(operator.mul, self.axes.widths)
+            areas = functools.reduce(operator.mul, self.hist.axes.widths)
             # Compute the density
-            zvalues = self.view() / self.sum() / areas
+            zvalues = self.hist.view() / self.hist.sum() / areas
         else:
-            zvalues = self.view()
+            zvalues = self.hist.view()
 
         zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
                                                  zvalues)
 
-        pc = ax.pcolormesh(*self.axes.edges.T, zvalues.T,
+        pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T,
                            cmap=cmap if cmap else 'viridis')
 
         ax.set_xlabel(self.xname)
@@ -130,16 +131,16 @@ class Hist2D(bh.Histogram):
             ax = plt.gca()
         if density:
             # Compute the areas of each bin
-            areas = functools.reduce(operator.mul, self.axes.widths)
+            areas = functools.reduce(operator.mul, self.hist.axes.widths)
             # Compute the density
-            zvalues = self.view() / self.sum() / areas
+            zvalues = self.hist.view() / self.hist.sum() / areas
         else:
-            zvalues = self.view()
+            zvalues = self.hist.view()
 
         zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
                                                  zvalues)
 
-        x, y = self.axes.edges.T
+        x, y = self.hist.axes.edges.T
         X, Y = np.meshgrid(x[:, 1:], y[1:, :])
         pc = ax.contour3D(X, Y, zvalues.T, 500,
                           cmap=cmap if cmap else 'viridis')
@@ -154,11 +155,11 @@ class Hist2D(bh.Histogram):
         # If we pass in a pandas series then rename the axes to the series name
         # Cool trick to not have to add labels to the histograms
         if isinstance(data_x, pd.Series):
-            self.axes[0].metadata = data_x.name
+            self.hist.axes[0].metadata = data_x.name
         if isinstance(data_y, pd.Series):
-            self.axes[1].metadata = data_y.name
+            self.hist.axes[1].metadata = data_y.name
 
-        return super(Hist2D, self).fill(data_x, data_y)
+        return self.hist.fill(data_x, data_y)
 
     def _gaussian2D(self, x, y, cen_x, cen_y, sig_x, sig_y, offset):
         func = np.exp(-(((cen_x-x)/sig_x)**2 + ((cen_y-y)/sig_y)**2)/2.0)
@@ -189,9 +190,9 @@ class Hist2D(bh.Histogram):
         initial.add("sigma_y", value=3.)
         initial.add("offset", value=0.)
 
-        x, y = self.axes.edges.T
-        areas = functools.reduce(operator.mul, self.axes.widths)
-        g = self.view() / self.sum() / areas
+        x, y = self.hist.axes.edges.T
+        areas = functools.reduce(operator.mul, self.hist.axes.widths)
+        g = self.hist.view() / self.hist.sum() / areas
         g = g.T
         fit = minimize(self._residuals, initial, args=(x[:, 1:], y[1:, :], g))
 

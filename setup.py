@@ -13,7 +13,7 @@ with open("nicks_plot_utils/__version__", "r+", encoding="utf-8") as fh:
     template = fh.read()
     fh.seek(0)
     version_parts = list(map(int, template.split('.')))
-    version_parts[-1] = int(git_version)
+    version_parts[-1] += 1
     version_parts = list(map(str, version_parts))
     version = ".".join(version_parts)
     fh.write(version)
