@@ -29,18 +29,23 @@ class Hist2D:
     def __init__(self,
                  xdata=None,
                  ydata=None,
-
                  xbins: float = 100,
                  xrange: List = None,
                  xname: str = None,
-
                  ybins: float = 100,
                  yrange: List = None,
                  yname: str = None,
+                 boost_hist=None,
                  *args, **kwargs) -> None:
 
-        self.xbins = xbins
         self.xname = xname
+        self.yname = yname
+
+        if boost_hist is not None:
+            self.hist = boost_hist
+            return
+        self.xbins = xbins
+
         # Get the left and right bin edges either from range or dataset with fallbacks
         if xdata is not None:
             self.xleft = np.min(xdata)
@@ -62,7 +67,7 @@ class Hist2D:
             print("Need to start with data or set xrange=[left,right]")
 
         self.ybins = ybins
-        self.yname = yname
+
         # Get the left and right bin edges either from range or dataset with fallbacks
         if ydata is not None:
             self.yleft = np.min(ydata)

@@ -30,10 +30,16 @@ class Hist1D:
                  xrange: List = None,
                  bins: float = 100,
                  name: str = None,
+                 boost_hist=None,
                  *args, **kwargs) -> None:
 
-        self.bins = bins
         self.name = name
+
+        if boost_hist is not None:
+            self.hist = boost_hist
+            return
+
+        self.bins = bins
         # Get the left and right bin edges either from range or dataset with fallbacks
         if data is not None:
             self.left = np.min(data)
@@ -70,15 +76,17 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
-                  color=None, density: bool = True, label: str = None):
+                  color=None, density: bool = True, label: str = None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
+        if color:
+            self.color = color
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
-        elif color:
-            self.color = color
 
         x, y = self.hist_to_xy(density=density)
+        # Height factor to change max of density plots
+        y *= factor
 
         if not label:
             label = self.hist.axes[0].metadata
