@@ -109,7 +109,7 @@ class Hist1D:
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__,
                  color=None, density: bool = True, label=None,
-                 errorcalc=None):
+                 errorcalc=None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
 
@@ -119,6 +119,7 @@ class Hist1D:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
         x, y = self.hist_to_xy(density=density)
+        y *= factor
 
         label = label if label else self.hist.axes[0].metadata
 
