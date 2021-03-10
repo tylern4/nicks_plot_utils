@@ -1,3 +1,5 @@
+This repo is forked from [tylern4/nicks_plot_utils](https://github.com/tylern4/nicks_plot_utils) for the sake of adding some personal-choice changes. 
+
 ## Ploting utils for myself
 ----------------------------
 
