@@ -1,12 +1,14 @@
 from typing import List
 import boost_histogram as bh
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 from scipy import stats
 import pandas as pd
 from lmfit import Parameters, minimize, report_fit
 import functools
 import operator
+import warnings
 
 __ALPHA__ = 0.8
 
@@ -103,8 +105,7 @@ class Hist2D:
         return self.hist
 
     def plot(self, ax=None,
-             filled: bool = False, alpha: float = __ALPHA__,
-             cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True):
+             cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True, log_cmap: bool = False):
         if not ax:
             ax = plt.gca()
         if density:
@@ -116,10 +117,21 @@ class Hist2D:
             zvalues = self.hist.view()
 
         zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
-                                                 zvalues)
+                                                zvalues)
 
-        pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T,
-                           cmap=cmap if cmap else 'viridis')
+        if log_cmap:
+            if density:
+                warnings.warn("WARNING: Using density = True with log_cmap can give weird results...")
+            # handle zero value bins, which will show as empty otherwise (ugly!)
+            zvalues[zvalues == 0] = 1E-30
+            vmin = np.min(zvalues[zvalues != 1E-30]) #dodge our dummy 'zero-substitute'
+            vmax = np.max(zvalues)
+            norm=colors.LogNorm(vmin=vmin,vmax=vmax,clip=True)
+        else:
+            norm = None
+
+        pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T, norm=norm,
+                        cmap=cmap if cmap else 'viridis')
 
         ax.set_xlabel(self.xname)
         ax.set_ylabel(self.yname)
