@@ -75,7 +75,7 @@ class Hist1D:
     def data(self):
         return self.hist
 
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = (__ALPHA__ - 0.1),
                   color=None, density: bool = True, label: str = None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
@@ -94,10 +94,11 @@ class Hist1D:
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
                      label=None if filled else label)
+
         if filled:
             ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
             st = ax.fill_between(x, 0, ys,
-                                 alpha=alpha,
+                                 alpha=fill_alpha,
                                  step='mid',
                                  color=self.color,
                                  label=label
