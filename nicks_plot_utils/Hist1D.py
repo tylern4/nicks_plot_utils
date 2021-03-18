@@ -94,6 +94,12 @@ class Hist1D:
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
                      label=None if filled else label)
+        #if non-zero counts at the edge of a histogram, draw vertical lines at limits
+        if not y[0] == 0: 
+            ax.vlines(x[0], 0, y[0], color =self.color, alpha=alpha)
+        if not y[-1] == 0:     
+            ax.vlines(x[-1], 0, y[-1], color=self.color, alpha=alpha)
+        
 
         if filled:
             ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
