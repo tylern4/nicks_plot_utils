@@ -198,6 +198,18 @@ class Hist1D:
 
         return (self.x, y)
 
+    def slice_to_xy(self, slice_lims, density: bool = True):
+        #new histogram from passed limits
+        slice = self.hist[bh.loc(slice_lims[0]):bh.loc(slice_lims[1])]
+        
+        x = slice.axes[0].centers
+        if density:
+            y=slice.view()/np.max(slice.view())
+        else:
+            y=slice.view()
+        
+        return(x,y)
+
     def fill(self, data):
         # If we pass in a pandas series then rename the axes to the series name
         # Cool trick to not have to add labels to the histograms
@@ -213,12 +225,12 @@ class Hist1D:
 
     def customModel(self, model, ax=None,
                     alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None):
+                    density: bool = True, params=None, fit_range = None):
         self.model = model
-        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params)
+        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, plots: bool = True):
+                  density: bool = True, params=None, plots: bool = True, fit_range = None):
         if not ax:
             ax = plt.gca()
         if not self.color:
@@ -226,7 +238,12 @@ class Hist1D:
         elif color:
             self.color = color
 
-        x, y = self.hist_to_xy(density=density)
+        if fit_range is None:
+            x, y = self.hist_to_xy(density=density)
+        else:
+            x, y = self.slice_to_xy(slice_lims=fit_range, density=density)
+            self.xs = np.linspace(x[0], x[-1], self.bins*5)
+        
         num_comp = len(self.model.components)
 
         # If we haven't set up params set them up now
