@@ -75,7 +75,7 @@ class Hist1D:
     def data(self):
         return self.hist
 
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = (__ALPHA__ - 0.1),
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = (alpha - 0.1),
                   color=None, density: bool = True, label: str = None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
