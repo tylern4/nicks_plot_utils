@@ -75,7 +75,7 @@ class Hist1D:
     def data(self):
         return self.hist
 
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = (alpha - 0.1),
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
                   color=None, density: bool = True, label: str = None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
@@ -87,7 +87,7 @@ class Hist1D:
         x, y = self.hist_to_xy(density=density)
         # Height factor to change max of density plots
         y *= factor
-
+        
         if not label:
             label = self.hist.axes[0].metadata
 
@@ -102,6 +102,9 @@ class Hist1D:
         
 
         if filled:
+            if fill_alpha is None:
+                fill_alpha = alpha - 0.1
+            
             ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
             st = ax.fill_between(x, 0, ys,
                                  alpha=fill_alpha,
