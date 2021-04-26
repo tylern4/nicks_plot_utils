@@ -5,9 +5,11 @@ import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
 from lmfit import Parameters, minimize
+from lmfit.models import GaussianModel
 import functools
 import operator
 import warnings
+from . import Hist1D
 
 __ALPHA__ = 0.8
 
@@ -136,6 +138,8 @@ class Hist2D:
 
         ax.set_xlabel(self.xname)
         ax.set_ylabel(self.yname)
+        ax.set_xlim([np.min(self.hist.axes[0]), np.max(self.hist.axes[0])])
+        ax.set_ylim([np.min(self.hist.axes[1]), np.max(self.hist.axes[1])])
         if colorbar:
             plt.gcf().colorbar(pc, ax=ax, aspect=30)
         return pc
@@ -227,3 +231,91 @@ class Hist2D:
             ax.clabel(CS, CS.levels, inline=True, fmt=r'%r \%%', fontsize=10)
 
         return fit
+
+    def fitSliceX(self, ax=None, num_slices: int = 10, NSIMA: int = 3,
+                  fit_range=None, center: bool = False, params=None,
+                  plot: bool = True):
+        if not ax:
+            ax = plt.gca()
+        if fit_range:
+            slices = np.linspace(*fit_range, num_slices)
+        else:
+            slices = np.linspace(
+                np.min(self.hist.axes[0]), np.max(self.hist.axes[0]), num_slices)
+        width = np.abs(slices[0]-slices[1])
+        outs = []
+        xs = []
+        yst = []
+        ysb = []
+        for sl in slices[:-1]:
+            x_val = (sl + sl+width)/2
+            try:
+                slic = self.hist[bh.loc(sl):bh.loc(sl+width):bh.sum, :]
+            except ValueError:
+                continue
+
+            temp_hist = Hist1D(boost_hist=slic)
+            if center:
+                params = GaussianModel().make_params()
+                params['center'].set(value=0, min=-0.5, max=0.5)
+                params['sigma'].set(value=0.1, min=0, max=1.0)
+
+            try:
+                out = temp_hist.fitGaussian(plots=False, params=params)
+                outs.append(out)
+                xs.append(x_val)
+                yst.append(out.params['center'] + NSIMA * out.params['sigma'])
+                ysb.append(out.params['center'] - NSIMA * out.params['sigma'])
+                if plot:
+                    ax.scatter(xs[-1], yst[-1], c='w', zorder=1)
+                    ax.scatter(xs[-1], ysb[-1], c='w', zorder=1)
+
+            except TypeError:
+                print(f"Cannot fit from [{sl}, {sl + width}]")
+                continue
+
+        return outs, np.array(xs), np.array(yst), np.array(ysb)
+
+    def fitSliceY(self, ax=None, num_slices: int = 10, NSIMA: int = 3,
+                  fit_range=None, center: bool = False, params=None,
+                  plot: bool = True):
+        if not ax:
+            ax = plt.gca()
+        if fit_range:
+            slices = np.linspace(*fit_range, num_slices)
+        else:
+            slices = np.linspace(
+                np.min(self.hist.axes[1]), np.max(self.hist.axes[1]), num_slices)
+        width = np.abs(slices[0]-slices[1])
+        outs = []
+        ys = []
+        xst = []
+        xsb = []
+        for sl in slices[:-1]:
+            y_val = (sl + sl+width)/2
+            try:
+                slic = self.hist[:, bh.loc(sl):bh.loc(sl+width):bh.sum]
+            except ValueError:
+                continue
+
+            temp_hist = Hist1D(boost_hist=slic)
+            if center:
+                params = GaussianModel().make_params()
+                params['center'].set(value=0, min=-0.5, max=0.5)
+                params['sigma'].set(value=0.1, min=0, max=1.0)
+
+            try:
+                out = temp_hist.fitGaussian(plots=False, params=params)
+                outs.append(out)
+                ys.append(y_val)
+                xst.append(out.params['center'] + NSIMA * out.params['sigma'])
+                xsb.append(out.params['center'] - NSIMA * out.params['sigma'])
+                if plot:
+                    ax.scatter(xst[-1], ys[-1], c='w', zorder=1)
+                    ax.scatter(xsb[-1], ys[-1], c='w', zorder=1)
+
+            except TypeError:
+                print(f"Cannot fit from [{sl}, {sl + width}]")
+                continue
+
+        return outs, np.array(ys), np.array(xst), np.array(xsb)
