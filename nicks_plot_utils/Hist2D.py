@@ -3,9 +3,8 @@ import boost_histogram as bh
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
-from scipy import stats
 import pandas as pd
-from lmfit import Parameters, minimize, report_fit
+from lmfit import Parameters, minimize
 import functools
 import operator
 import warnings
@@ -117,21 +116,23 @@ class Hist2D:
             zvalues = self.hist.view()
 
         zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
-                                                zvalues)
+                                                 zvalues)
 
         if log_cmap:
             if density:
-                warnings.warn("WARNING: Using density = True with log_cmap can give weird results...")
+                warnings.warn(
+                    "WARNING: Using density = True with log_cmap can give weird results...")
             # handle zero value bins, which will show as empty otherwise (ugly!)
             zvalues[zvalues == 0] = 1E-30
-            vmin = np.min(zvalues[zvalues != 1E-30]) #dodge our dummy 'zero-substitute'
+            # dodge our dummy 'zero-substitute'
+            vmin = np.min(zvalues[zvalues != 1E-30])
             vmax = np.max(zvalues)
-            norm=colors.LogNorm(vmin=vmin,vmax=vmax,clip=True)
+            norm = colors.LogNorm(vmin=vmin, vmax=vmax, clip=True)
         else:
             norm = None
 
         pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T, norm=norm,
-                        cmap=cmap if cmap else 'viridis')
+                           cmap=cmap if cmap else 'viridis')
 
         ax.set_xlabel(self.xname)
         ax.set_ylabel(self.yname)
