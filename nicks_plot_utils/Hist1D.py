@@ -75,8 +75,7 @@ class Hist1D:
     def data(self):
         return self.hist
 
-
-    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
                   color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best'):
         if not ax:
             ax = plt.gca()
@@ -257,7 +256,7 @@ class Hist1D:
 
     def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
                   density: bool = True, params=None, plots: bool = True, fit_range=None, label=None, loc='best'):
-      
+
         if not ax:
             ax = plt.gca()
 
