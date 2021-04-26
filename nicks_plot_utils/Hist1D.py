@@ -76,11 +76,14 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__,
-                  color=None, density: bool = True, label: str = None, factor: int = 1.0):
+                  color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best'):
         if not ax:
             ax = plt.gca()
         if color:
             self.color = color
+        else:
+            self.color = None
+
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
@@ -90,21 +93,25 @@ class Hist1D:
 
         if not label:
             label = self.hist.axes[0].metadata
+            if isinstance(label, dict):
+                label = None
 
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
                      label=None if filled else label)
         if filled:
             ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
+            ys *= factor
             st = ax.fill_between(x, 0, ys,
                                  alpha=alpha,
                                  step='mid',
                                  color=self.color,
-                                 label=label
+                                 label=label,
                                  )
         if self.name:
             ax.set_xlabel(self.name)
-        ax.legend()
+        if label:
+            ax.legend(loc=loc)
         return st
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__,
@@ -113,15 +120,19 @@ class Hist1D:
         if not ax:
             ax = plt.gca()
 
-        if color is not None:
+        if color:
             self.color = color
-        elif not self.color:
+        else:
+            self.color = None
+
+        if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
         x, y = self.hist_to_xy(density=density)
         y *= factor
 
-        label = label if label else self.hist.axes[0].metadata
+        label = label if label else (
+            self.hist.axes[0].metadata if not isinstance(self.hist.axes[0].metadata, dict) else None)
 
         if type(errorcalc) is float or type(errorcalc) is int or type(errorcalc) is np.float64:
             # If we have a number make array with the same number the same size as y
@@ -158,7 +169,8 @@ class Hist1D:
                          color=self.color,
                          label=label)
         ax.set_xlabel(self.name)
-        ax.legend()
+        if label:
+            ax.legend()
         return st
 
     @property
@@ -211,13 +223,25 @@ class Hist1D:
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params)
 
     def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, plots: bool = True):
+                  density: bool = True, params=None, plots: bool = True, label=None, loc='best'):
         if not ax:
             ax = plt.gca()
+
+        try:
+            self.xs
+        except AttributeError:
+            _min = 0
+            _max = self.hist.shape[0]
+            _axs = self.hist.axes[0]
+            self.xs = np.linspace(_axs.edges[_min], _axs.edges[_max], 500)
+
+        if color:
+            self.color = color
+        else:
+            self.color = None
+
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
-        elif color:
-            self.color = color
 
         x, y = self.hist_to_xy(density=density)
         num_comp = len(self.model.components)
@@ -237,8 +261,9 @@ class Hist1D:
         if plots:
             ax.plot(self.xs, out.eval(x=self.xs),
                     label=self.model.name if num_comp == 1 else "Total Fit", zorder=3, lw=3)
+            if label:
+                ax.legend(loc=loc)
 
-            ax.legend()
         return out
 
     def fitBreitWigner(self, ax=None,

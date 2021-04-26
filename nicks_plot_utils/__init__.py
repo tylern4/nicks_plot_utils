@@ -9,6 +9,8 @@ from .Scatter import Scatter
 import matplotlib.pyplot as plt
 
 plt.style.use('bmh')
+# plt.style.use('seaborn-colorblind')
+
 plt.rcParams['axes.formatter.use_mathtext'] = True
 plt.rcParams['font.size'] = 16
 plt.rcParams['axes.labelsize'] = 20
