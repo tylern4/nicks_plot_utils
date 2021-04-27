@@ -67,6 +67,58 @@ class Scatter:
             ax.legend()
         return st
 
+    def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
+                  color=None, label: str = None, factor: int = 1.0, loc='best'):
+        if not ax:
+            ax = plt.gca()
+        if color:
+            self.color = color
+        else:
+            self.color = None
+
+        if not self.color:
+            self.color = next(ax._get_lines.prop_cycler)['color']
+
+        x = self._x
+        y = self._y
+        # Height factor to change max of density plots
+        y *= factor
+
+        if not label:
+            label = self.name
+            if isinstance(label, dict):
+                label = None
+
+        st = ax.step(x, y, where='mid', color=self.color,
+                     alpha=alpha,
+                     label=None if filled else label)
+
+        # if non-zero counts at the edge of a histogram, draw vertical lines at limits
+        # 0 is left edge -1 is right edge
+        for edge in [0, -1]:
+            if y[edge] != 0:
+                ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha)
+
+        filled = filled if fill_alpha is None else True
+
+        if filled:
+            # If filled not defined set it to lines alpha - 0.1
+            fill_alpha = fill_alpha if fill_alpha is not None else alpha - 0.1
+
+            ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
+            ys *= factor
+            st = ax.fill_between(x, 0, ys,
+                                 alpha=fill_alpha,
+                                 step='mid',
+                                 color=self.color,
+                                 label=label,
+                                 )
+        if self.name:
+            ax.set_title(self.name)
+        if label:
+            ax.legend(loc=loc)
+        return st
+
     @property
     def x(self):
         """I'm the 'x' property."""
@@ -109,8 +161,9 @@ class Scatter:
         num_comp = len(self.model.components)
 
         # If we haven't set up params set them up now
-        if params == None:
-            pars = self.model.components[num_comp - 1].guess(y, x=x)
+        if params is None:
+            pars = self.model.components[num_comp -
+                                         1].guess(self._y, x=self._x)
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
 
