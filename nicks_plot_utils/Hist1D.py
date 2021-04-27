@@ -106,7 +106,9 @@ class Hist1D:
             if y[edge] != 0:
                 ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha)
 
-        if filled or fill_alpha != 0:
+        filled = filled if fill_alpha is None else True
+
+        if filled:
             # If filled not defined set it to lines alpha - 0.1
             fill_alpha = fill_alpha if fill_alpha is not None else alpha - 0.1
 
