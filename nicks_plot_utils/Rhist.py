@@ -52,12 +52,10 @@ except (ImportError, ModuleNotFoundError) as e:
     # Create empty class
     class TH2D:
         def __init__(self, *args):
-            print(
-                "ROOT was not found. Install ROOT with pyroot enabled to use this feature.")
-            raise NotImplementedError
+            raise NotImplementedError(
+                "Install ROOT with pyroot enabled to use this feature.")
 
     class TH1D:
         def __init__(self, *args):
-            print(
-                "ROOT was not found. Install ROOT with pyroot enabled to use this feature.")
-            raise NotImplementedError
+            raise NotImplementedError(
+                "Install ROOT with pyroot enabled to use this feature.")
