@@ -25,4 +25,4 @@ __version__ = "1.0.0"
 __author__ = 'Nick Tyler'
 __credits__ = 'Nick Tyler'
 
-__all__ = ["Hist1D", "Hist2D", "Scatter", "TH1F", "TH2D"]
+__all__ = ["Hist1D", "Hist2D", "Scatter", "TH1D", "TH2D"]
