@@ -10,3 +10,5 @@ In trying to decrease the amount of copy paste in my python code I decided to pu
 [Two Dimentional Histogram](Examples/Example_Hist2D.ipynb)
 
 [uproot](Examples/uproot.ipynb)
+
+[ROOT Histograms](Examples/Example_Rhists.ipynb)
