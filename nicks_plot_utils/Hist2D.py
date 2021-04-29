@@ -9,7 +9,8 @@ from lmfit.models import GaussianModel
 import functools
 import operator
 import warnings
-from . import Hist1D
+from .Hist1D import Hist1D
+from .Scatter import Scatter
 
 __ALPHA__ = 0.8
 
@@ -266,15 +267,13 @@ class Hist2D:
                 xs.append(x_val)
                 yst.append(out.params['center'] + NSIMA * out.params['sigma'])
                 ysb.append(out.params['center'] - NSIMA * out.params['sigma'])
-                if plot:
-                    ax.scatter(xs[-1], yst[-1], c='w', zorder=1)
-                    ax.scatter(xs[-1], ysb[-1], c='w', zorder=1)
 
             except TypeError:
                 print(f"Cannot fit from [{sl}, {sl + width}]")
                 continue
-
-        return outs, np.array(xs), np.array(yst), np.array(ysb)
+        top = Scatter(np.array(xs), np.array(yst))
+        bot = Scatter(np.array(xs), np.array(ysb))
+        return outs, top, bot
 
     def fitSliceY(self, ax=None, num_slices: int = 10, NSIMA: int = 3,
                   fit_range=None, center: bool = False, params=None,
@@ -310,12 +309,10 @@ class Hist2D:
                 ys.append(y_val)
                 xst.append(out.params['center'] + NSIMA * out.params['sigma'])
                 xsb.append(out.params['center'] - NSIMA * out.params['sigma'])
-                if plot:
-                    ax.scatter(xst[-1], ys[-1], c='w', zorder=1)
-                    ax.scatter(xsb[-1], ys[-1], c='w', zorder=1)
 
             except TypeError:
                 print(f"Cannot fit from [{sl}, {sl + width}]")
                 continue
-
-        return outs, np.array(ys), np.array(xst), np.array(xsb)
+        left = Scatter(np.array(xst), np.array(ys))
+        right = Scatter(np.array(xsb), np.array(ys))
+        return outs, left, right
