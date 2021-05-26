@@ -10,11 +10,17 @@ try:
             ROOT.TH2D.__init__(self, *args)
 
         def fill(self, xs, ys, weight=1):
-            if hasattr(xs, "__len__") and hasattr(ys, "__len__"):
+            # If the values object we put in has the length property fill in each with loop
+            if hasattr(xs, "__len__"):
+                # Check if weights is an array as well and if not make an array of ones
                 weight = weight if hasattr(
-                    weight, "__len__") else np.ones_like(xs)
-                for x, y, w in zip(xs, ys, weight):
-                    self.Fill(x, y, w)
+                    weight, "__len__") else np.ones_like(xs) * weight
+                # Use ROOTs FillN function to loop in C++ instead of python
+                weight = np.array(weight)
+                xs = np.array(xs)
+                ys = np.array(ys)
+                N = xs.shape[0]
+                self.FillN(N, xs, ys, weight, 1)
             else:
                 self.Fill(xs, ys, weight)
 
@@ -29,11 +35,16 @@ try:
                 val (Array like): Array of values to fill into histogram
                 weight (Array or Float, optional): Array of weights to fill for each event. Defaults to 1.
             """
+            # If the values object we put in has the length property fill in each with loop
             if hasattr(val, "__len__"):
+                # Check if weights is an array as well and if not make an array of ones
                 weight = weight if hasattr(
                     weight, "__len__") else np.ones_like(val) * weight
-                for v, w in zip(val, weight):
-                    self.Fill(v, w)
+                # Use ROOTs FillN function to loop in C++ instead of python
+                weight = np.array(weight)
+                val = np.array(val)
+                N = val.shape[0]
+                self.FillN(N, val, weight, 1)
             else:
                 self.Fill(val, weight)
 
