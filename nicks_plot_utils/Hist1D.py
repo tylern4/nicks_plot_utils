@@ -37,6 +37,12 @@ class Hist1D:
 
         if boost_hist is not None:
             self.hist = boost_hist
+            #set things for plotting:
+            self.bins = len(self.hist.axes[0].centers) 
+            self.left = min(self.hist.axes[0].edges)
+            self.right = max(self.hist.axes[0].edges)
+            self.xs = np.linspace(self.left, self.right, self.bins*5)
+            self.color = None
             return
 
         self.bins = bins
