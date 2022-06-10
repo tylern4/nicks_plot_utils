@@ -102,13 +102,17 @@ class Hist1D:
                      alpha=alpha,
                      label=None if filled else label,
                      *args, **kwargs)
-        #if non-zero counts at the edge of a histogram, draw vertical lines at limits
-        if not y[0] == 0: 
-            ax.vlines(x[0], 0, y[0], color =self.color, alpha=alpha)
-        if not y[-1] == 0:     
-            ax.vlines(x[-1], 0, y[-1], color=self.color, alpha=alpha)
-        
 
+        #if non-zero counts at the edge of a histogram, draw vertical lines at limits
+        if not y[0] == 0:
+            step_lw = plt.getp(st[0], 'linewidth')
+            step_ls = plt.getp(st[0], 'linestyle') 
+            ax.vlines(x[0], 0, y[0], color =self.color, alpha=alpha, lw = step_lw, ls=step_ls)
+        if not y[-1] == 0:
+            step_lw = plt.getp(st[0], 'linewidth')
+            step_ls = plt.getp(st[0], 'linestyle')
+            ax.vlines(x[-1], 0, y[-1], color=self.color, alpha=alpha, lw = step_lw, ls=step_ls)
+        
         if filled:
             if fill_alpha is None:
                 fill_alpha = alpha - 0.1
