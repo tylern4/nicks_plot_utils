@@ -76,7 +76,8 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
-                  color=None, density: bool = True, label: str = None, factor: int = 1.0):
+                  color=None, density: bool = True, label: str = None, factor: int = 1.0, legend: bool = False,
+                  *args, **kwargs):
         if not ax:
             ax = plt.gca()
         if color:
@@ -93,7 +94,8 @@ class Hist1D:
 
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
-                     label=None if filled else label)
+                     label=None if filled else label,
+                     *args, **kwargs)
         #if non-zero counts at the edge of a histogram, draw vertical lines at limits
         if not y[0] == 0: 
             ax.vlines(x[0], 0, y[0], color =self.color, alpha=alpha)
@@ -114,7 +116,10 @@ class Hist1D:
                                  )
         if self.name:
             ax.set_xlabel(self.name)
-        ax.legend()
+        
+        if legend:
+            ax.legend()
+
         return st
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__,
