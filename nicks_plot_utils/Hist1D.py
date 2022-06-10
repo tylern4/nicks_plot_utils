@@ -82,54 +82,58 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
-                  color=None, density: bool = True, label: str = None, factor: int = 1.0, legend: bool = False,
+                  color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best',
                   *args, **kwargs):
         if not ax:
             ax = plt.gca()
         if color:
             self.color = color
+        else:
+            self.color = None
+
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
         x, y = self.hist_to_xy(density=density)
         # Height factor to change max of density plots
         y *= factor
-        
+
         if not label:
             label = self.hist.axes[0].metadata
+            if isinstance(label, dict):
+                label = None
 
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
                      label=None if filled else label,
                      *args, **kwargs)
 
-        #if non-zero counts at the edge of a histogram, draw vertical lines at limits
-        if not y[0] == 0:
-            step_lw = plt.getp(st[0], 'linewidth')
-            step_ls = plt.getp(st[0], 'linestyle') 
-            ax.vlines(x[0], 0, y[0], color =self.color, alpha=alpha, lw = step_lw, ls=step_ls)
-        if not y[-1] == 0:
-            step_lw = plt.getp(st[0], 'linewidth')
-            step_ls = plt.getp(st[0], 'linestyle')
-            ax.vlines(x[-1], 0, y[-1], color=self.color, alpha=alpha, lw = step_lw, ls=step_ls)
-        
+        # if non-zero counts at the edge of a histogram, draw vertical lines at limits
+        # 0 is left edge -1 is right edge
+        for edge in [0, -1]:
+            if y[edge] != 0:
+                step_lw = plt.getp(st[0], 'linewidth')
+                step_ls = plt.getp(st[0], 'linestyle') 
+                ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha, lw = step_lw, ls=step_ls)
+
+        filled = filled if fill_alpha is None else True
+
         if filled:
-            if fill_alpha is None:
-                fill_alpha = alpha - 0.1
-            
+            # If filled not defined set it to lines alpha - 0.1
+            fill_alpha = fill_alpha if fill_alpha is not None else alpha - 0.1
+
             ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
+            ys *= factor
             st = ax.fill_between(x, 0, ys,
                                  alpha=fill_alpha,
                                  step='mid',
                                  color=self.color,
-                                 label=label
+                                 label=label,
                                  )
         if self.name:
             ax.set_xlabel(self.name)
-        
-        if legend:
-            ax.legend()
-
+        if label:
+            ax.legend(loc=loc)
         return st
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__,
@@ -138,15 +142,19 @@ class Hist1D:
         if not ax:
             ax = plt.gca()
 
-        if color is not None:
+        if color:
             self.color = color
-        elif not self.color:
+        else:
+            self.color = None
+
+        if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
         x, y = self.hist_to_xy(density=density)
         y *= factor
 
-        label = label if label else self.hist.axes[0].metadata
+        label = label if label else (
+            self.hist.axes[0].metadata if not isinstance(self.hist.axes[0].metadata, dict) else None)
 
         if type(errorcalc) is float or type(errorcalc) is int or type(errorcalc) is np.float64:
             # If we have a number make array with the same number the same size as y
@@ -183,7 +191,8 @@ class Hist1D:
                          color=self.color,
                          label=label)
         ax.set_xlabel(self.name)
-        ax.legend()
+        if label:
+            ax.legend()
         return st
 
     @property
@@ -216,17 +225,26 @@ class Hist1D:
 
         return (self.x, y)
 
-    def slice_to_xy(self, slice_lims, density: bool = True):
-        #new histogram from passed limits
-        slice = self.hist[bh.loc(slice_lims[0]):bh.loc(slice_lims[1])]
-        
-        x = slice.axes[0].centers
+    def slice_to_xy(self, slice_range, density: bool = True):
+        """Return the x, y values from a histogram in the range
+        Useful for plotting in different ways and for fitting
+
+        Args:
+            slice_range (Required) : Range to return x, y slice from
+            density (bool, optional): Choose to plot y values or density of y values. Defaults to True.
+
+        Returns:
+            Tuple(x, y): Returns a tuple of np arrays for x and y values of histogram
+        """
+        slic = self.hist[bh.loc(slice_range[0]):bh.loc(slice_range[1])]
+
+        x = slic.axes[0].centers
         if density:
-            y=slice.view()/np.max(slice.view())
+            y = slic.view()/np.max(slic.view())
         else:
-            y=slice.view()
-        
-        return(x,y)
+            y = slic.view()
+
+        return (x, y)
 
     def fill(self, data):
         # If we pass in a pandas series then rename the axes to the series name
@@ -235,9 +253,9 @@ class Hist1D:
             self.hist.axes[0].metadata = data.name
         return self.hist.fill(data)
 
-    def fitGaussian(self, ax=None, alpha: float = __ALPHA__, fit_range = None,
+    def fitGaussian(self, ax=None, alpha: float = __ALPHA__, fit_range=None,
                     color=None, density: bool = True, params=None, plots: bool = True,
-                    
+
                     *args, **kwargs):
         self.model = GaussianModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, plots=plots, fit_range=fit_range)
@@ -248,21 +266,37 @@ class Hist1D:
         self.model = model
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range,plots=plots, weights=weights)
 
-    def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None, density: bool = True, 
-        params=None, plots: bool = True, fit_range = None, weights = None):
+    def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
+                  density: bool = True, params=None, plots: bool = True, fit_range=None, 
+                  weights = None, label=None, loc='best'):
+
         if not ax:
             ax = plt.gca()
+
+        try:
+            self.xs
+        except AttributeError:
+            _min = 0
+            _max = self.hist.shape[0]
+            _axs = self.hist.axes[0]
+            self.xs = np.linspace(_axs.edges[_min], _axs.edges[_max], 500)
+
+        if color:
+            self.color = color
+        else:
+            self.color = None
+
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
-        elif color:
-            self.color = color
+
+        plot_xs = self.xs
 
         if fit_range is None:
             x, y = self.hist_to_xy(density=density)
         else:
-            x, y = self.slice_to_xy(slice_lims=fit_range, density=density)
-            self.xs = np.linspace(x[0], x[-1], self.bins*5)
-        
+            x, y = self.slice_to_xy(slice_range=fit_range, density=density)
+            plot_xs = np.linspace(x[0], x[-1], self.bins*5)
+
         num_comp = len(self.model.components)
 
         # If we haven't set up params set them up now
@@ -274,130 +308,131 @@ class Hist1D:
         out = self.model.fit(y, params, x=x, nan_policy='omit', weights=weights)
 
         if num_comp > 1 and plots:
-            comps = out.eval_components(x=self.xs)
+            comps = out.eval_components(x=plot_xs)
             for name, comp in comps.items():
-                ax.plot(self.xs, comp, label=name+"fit", zorder=3)
+                ax.plot(plot_xs, comp, label=name+"fit", zorder=3)
         if plots:
-            ax.plot(self.xs, out.eval(x=self.xs),
+            ax.plot(plot_xs, out.eval(x=plot_xs),
                     label=self.model.name if num_comp == 1 else "Total Fit", zorder=3, lw=3)
+            if label:
+                ax.legend(loc=loc)
 
-            ax.legend()
         return out
 
     def fitBreitWigner(self, ax=None,
                        alpha: float = __ALPHA__, color=None,
-                       density: bool = True, params=None, fit_range = None,
+                       density: bool = True, params=None, fit_range=None,
                        *args, **kwargs):
         self.model = BreitWignerModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitComplexConstant(self, ax=None,
                            alpha: float = __ALPHA__, color=None,
-                           density: bool = True, params=None, fit_range = None,
+                           density: bool = True, params=None, fit_range=None,
                            *args, **kwargs):
         self.model = ComplexConstantModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitConstant(self, ax=None,
                     alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None, fit_range = None,
+                    density: bool = True, params=None, fit_range=None,
                     *args, **kwargs):
         self.model = ConstantModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitDampedHarmonicOscillator(self, ax=None,
                                     alpha: float = __ALPHA__, color=None,
-                                    density: bool = True, params=None, fit_range = None,
+                                    density: bool = True, params=None, fit_range=None,
                                     *args, **kwargs):
         self.model = DampedHarmonicOscillatorModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitDampedOscillator(self, ax=None,
                             alpha: float = __ALPHA__, color=None,
-                            density: bool = True, params=None, fit_range = None,
+                            density: bool = True, params=None, fit_range=None,
                             *args, **kwargs):
         self.model = DampedOscillatorModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitDonaich(self, ax=None,
                    alpha: float = __ALPHA__, color=None,
-                   density: bool = True, params=None, fit_range = None,
+                   density: bool = True, params=None, fit_range=None,
                    *args, **kwargs):
         self.model = DonaichModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitDoniach(self, ax=None,
                    alpha: float = __ALPHA__, color=None,
-                   density: bool = True, params=None, fit_range = None,
+                   density: bool = True, params=None, fit_range=None,
                    *args, **kwargs):
         self.model = DoniachModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitExponentialGaussian(self, ax=None,
                                alpha: float = __ALPHA__, color=None,
-                               density: bool = True, params=None, fit_range = None,
+                               density: bool = True, params=None, fit_range=None,
                                *args, **kwargs):
         self.model = ExponentialGaussianModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitExponential(self, ax=None,
                        alpha: float = __ALPHA__, color=None,
-                       density: bool = True, params=None, fit_range = None,
+                       density: bool = True, params=None, fit_range=None,
                        *args, **kwargs):
         self.model = ExponentialModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitExpression(self, ax=None,
                       alpha: float = __ALPHA__, color=None,
-                      density: bool = True, params=None, fit_range = None,
+                      density: bool = True, params=None, fit_range=None,
                       *args, **kwargs):
         self.model = ExpressionModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitLinear(self, ax=None,
                   alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, fit_range = None,
+                  density: bool = True, params=None, fit_range=None,
                   *args, **kwargs):
         self.model = LinearModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitLognormal(self, ax=None,
                      alpha: float = __ALPHA__, color=None,
-                     density: bool = True, params=None, fit_range = None,
+                     density: bool = True, params=None, fit_range=None,
                      *args, **kwargs):
         self.model = LognormalModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitLorentzian(self, ax=None,
                       alpha: float = __ALPHA__, color=None,
-                      density: bool = True, params=None, fit_range = None,
+                      density: bool = True, params=None, fit_range=None,
                       *args, **kwargs):
         self.model = LorentzianModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitMoffat(self, ax=None,
                   alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, fit_range = None,
+                  density: bool = True, params=None, fit_range=None,
                   *args, **kwargs):
         self.model = MoffatModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitParabolic(self, ax=None,
                      alpha: float = __ALPHA__, color=None,
-                     density: bool = True, params=None, fit_range = None,
+                     density: bool = True, params=None, fit_range=None,
                      *args, **kwargs):
         self.model = ParabolicModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitPearson7(self, ax=None,
                     alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None, fit_range = None,
+                    density: bool = True, params=None, fit_range=None,
                     *args, **kwargs):
         self.model = Pearson7Model(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitPolynomial(self, degree=5, ax=None,
-                      alpha: float = __ALPHA__, color=None, fit_range = None,
+                      alpha: float = __ALPHA__, color=None, fit_range=None,
                       density: bool = True, params=None,
                       *args, **kwargs):
         self.model = PolynomialModel(degree, *args, **kwargs)
@@ -405,77 +440,77 @@ class Hist1D:
 
     def fitPowerLaw(self, ax=None,
                     alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None, fit_range = None,
+                    density: bool = True, params=None, fit_range=None,
                     *args, **kwargs):
         self.model = PowerLawModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitPseudoVoigt(self, ax=None,
                        alpha: float = __ALPHA__, color=None,
-                       density: bool = True, params=None, fit_range = None,
+                       density: bool = True, params=None, fit_range=None,
                        *args, **kwargs):
         self.model = PseudoVoigtModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitQuadratic(self, ax=None,
                      alpha: float = __ALPHA__, color=None,
-                     density: bool = True, params=None, fit_range = None,
+                     density: bool = True, params=None, fit_range=None,
                      *args, **kwargs):
         self.model = QuadraticModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitRectangle(self, ax=None,
                      alpha: float = __ALPHA__, color=None,
-                     density: bool = True, params=None, fit_range = None,
+                     density: bool = True, params=None, fit_range=None,
                      *args, **kwargs):
         self.model = RectangleModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitSkewedGaussian(self, ax=None,
                           alpha: float = __ALPHA__, color=None,
-                          density: bool = True, params=None, fit_range = None,
+                          density: bool = True, params=None, fit_range=None,
                           *args, **kwargs):
         self.model = SkewedGaussianModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitSkewedVoigt(self, ax=None,
                        alpha: float = __ALPHA__, color=None,
-                       density: bool = True, params=None, fit_range = None,
+                       density: bool = True, params=None, fit_range=None,
                        *args, **kwargs):
         self.model = SkewedVoigtModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitSplitLorentzian(self, ax=None,
                            alpha: float = __ALPHA__, color=None,
-                           density: bool = True, params=None, fit_range = None,
+                           density: bool = True, params=None, fit_range=None,
                            *args, **kwargs):
         self.model = SplitLorentzianModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitStep(self, ax=None,
                 alpha: float = __ALPHA__, color=None,
-                density: bool = True, params=None, fit_range = None,
+                density: bool = True, params=None, fit_range=None,
                 *args, **kwargs):
         self.model = StepModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitStudentsT(self, ax=None,
                      alpha: float = __ALPHA__, color=None,
-                     density: bool = True, params=None, fit_range = None,
+                     density: bool = True, params=None, fit_range=None,
                      *args, **kwargs):
         self.model = StudentsTModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitThermalDistribution(self, ax=None,
                                alpha: float = __ALPHA__, color=None,
-                               density: bool = True, params=None, fit_range = None,
+                               density: bool = True, params=None, fit_range=None,
                                *args, **kwargs):
         self.model = ThermalDistributionModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitVoigt(self, ax=None,
                  alpha: float = __ALPHA__, color=None,
-                 density: bool = True, params=None, fit_range = None,
+                 density: bool = True, params=None, fit_range=None,
                  *args, **kwargs):
         self.model = VoigtModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)

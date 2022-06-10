@@ -3,12 +3,14 @@ import boost_histogram as bh
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import numpy as np
-from scipy import stats
 import pandas as pd
-from lmfit import Parameters, minimize, report_fit
+from lmfit import Parameters, minimize
+from lmfit.models import GaussianModel
 import functools
 import operator
 import warnings
+from .Hist1D import Hist1D
+from .Scatter import Scatter
 
 __ALPHA__ = 0.8
 
@@ -117,24 +119,28 @@ class Hist2D:
             zvalues = self.hist.view()
 
         zvalues = zvalues if zeros else np.where(zvalues == 0, np.nan,
-                                                zvalues)
+                                                 zvalues)
 
         if log_cmap:
             if density:
-                warnings.warn("WARNING: Using density = True with log_cmap can give weird results...")
+                warnings.warn(
+                    "WARNING: Using density = True with log_cmap can give weird results...")
             # handle zero value bins, which will show as empty otherwise (ugly!)
             zvalues[zvalues == 0] = 1E-30
-            vmin = np.min(zvalues[zvalues != 1E-30]) #dodge our dummy 'zero-substitute'
+            # dodge our dummy 'zero-substitute'
+            vmin = np.min(zvalues[zvalues != 1E-30])
             vmax = np.max(zvalues)
-            norm=colors.LogNorm(vmin=vmin,vmax=vmax,clip=True)
+            norm = colors.LogNorm(vmin=vmin, vmax=vmax, clip=True)
         else:
             norm = None
 
         pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T, norm=norm,
-                        cmap=cmap if cmap else 'viridis')
+                           cmap=cmap if cmap else 'viridis')
 
         ax.set_xlabel(self.xname)
         ax.set_ylabel(self.yname)
+        ax.set_xlim([np.min(self.hist.axes[0]), np.max(self.hist.axes[0])])
+        ax.set_ylim([np.min(self.hist.axes[1]), np.max(self.hist.axes[1])])
         if colorbar:
             plt.gcf().colorbar(pc, ax=ax, aspect=30)
         return pc
@@ -226,3 +232,87 @@ class Hist2D:
             ax.clabel(CS, CS.levels, inline=True, fmt=r'%r \%%', fontsize=10)
 
         return fit
+
+    def fitSliceX(self, ax=None, num_slices: int = 10, NSIMA: int = 3,
+                  fit_range=None, center: bool = False, params=None,
+                  plot: bool = True):
+        if not ax:
+            ax = plt.gca()
+        if fit_range:
+            slices = np.linspace(*fit_range, num_slices)
+        else:
+            slices = np.linspace(
+                np.min(self.hist.axes[0]), np.max(self.hist.axes[0]), num_slices)
+        width = np.abs(slices[0]-slices[1])
+        outs = []
+        xs = []
+        yst = []
+        ysb = []
+        for sl in slices[:-1]:
+            x_val = (sl + sl+width)/2
+            try:
+                slic = self.hist[bh.loc(sl):bh.loc(sl+width):bh.sum, :]
+            except ValueError:
+                continue
+
+            temp_hist = Hist1D(boost_hist=slic)
+            if center:
+                params = GaussianModel().make_params()
+                params['center'].set(value=0, min=-0.5, max=0.5)
+                params['sigma'].set(value=0.1, min=0, max=1.0)
+
+            try:
+                out = temp_hist.fitGaussian(plots=False, params=params)
+                outs.append(out)
+                xs.append(x_val)
+                yst.append(out.params['center'] + NSIMA * out.params['sigma'])
+                ysb.append(out.params['center'] - NSIMA * out.params['sigma'])
+
+            except TypeError:
+                print(f"Cannot fit from [{sl}, {sl + width}]")
+                continue
+        top = Scatter(np.array(xs), np.array(yst))
+        bot = Scatter(np.array(xs), np.array(ysb))
+        return outs, top, bot
+
+    def fitSliceY(self, ax=None, num_slices: int = 10, NSIMA: int = 3,
+                  fit_range=None, center: bool = False, params=None,
+                  plot: bool = True):
+        if not ax:
+            ax = plt.gca()
+        if fit_range:
+            slices = np.linspace(*fit_range, num_slices)
+        else:
+            slices = np.linspace(
+                np.min(self.hist.axes[1]), np.max(self.hist.axes[1]), num_slices)
+        width = np.abs(slices[0]-slices[1])
+        outs = []
+        ys = []
+        xst = []
+        xsb = []
+        for sl in slices[:-1]:
+            y_val = (sl + sl+width)/2
+            try:
+                slic = self.hist[:, bh.loc(sl):bh.loc(sl+width):bh.sum]
+            except ValueError:
+                continue
+
+            temp_hist = Hist1D(boost_hist=slic)
+            if center:
+                params = GaussianModel().make_params()
+                params['center'].set(value=0, min=-0.5, max=0.5)
+                params['sigma'].set(value=0.1, min=0, max=1.0)
+
+            try:
+                out = temp_hist.fitGaussian(plots=False, params=params)
+                outs.append(out)
+                ys.append(y_val)
+                xst.append(out.params['center'] + NSIMA * out.params['sigma'])
+                xsb.append(out.params['center'] - NSIMA * out.params['sigma'])
+
+            except TypeError:
+                print(f"Cannot fit from [{sl}, {sl + width}]")
+                continue
+        left = Scatter(np.array(xst), np.array(ys))
+        right = Scatter(np.array(xsb), np.array(ys))
+        return outs, left, right
