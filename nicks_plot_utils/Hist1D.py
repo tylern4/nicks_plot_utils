@@ -239,13 +239,13 @@ class Hist1D:
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, plots=plots, fit_range=fit_range)
 
     def customModel(self, model, ax=None,
-                    alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None, fit_range = None):
+                    alpha: float = __ALPHA__, color=None, density: bool = True, 
+                    params=None, fit_range = None, weights=None, plots: bool = True):
         self.model = model
-        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
+        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range,plots=plots, weights=weights)
 
-    def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, plots: bool = True, fit_range = None):
+    def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None, density: bool = True, 
+        params=None, plots: bool = True, fit_range = None, weights = None):
         if not ax:
             ax = plt.gca()
         if not self.color:
@@ -267,7 +267,7 @@ class Hist1D:
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
 
-        out = self.model.fit(y, params, x=x, nan_policy='omit')
+        out = self.model.fit(y, params, x=x, nan_policy='omit', weights=weights)
 
         if num_comp > 1 and plots:
             comps = out.eval_components(x=self.xs)
