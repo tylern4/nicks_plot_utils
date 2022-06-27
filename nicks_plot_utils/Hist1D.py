@@ -37,6 +37,12 @@ class Hist1D:
 
         if boost_hist is not None:
             self.hist = boost_hist
+            #set things for plotting:
+            self.bins = len(self.hist.axes[0].centers) 
+            self.left = min(self.hist.axes[0].edges)
+            self.right = max(self.hist.axes[0].edges)
+            self.xs = np.linspace(self.left, self.right, self.bins*5)
+            self.color = None
             return
 
         self.bins = bins
@@ -76,7 +82,8 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
-                  color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best'):
+                  color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best',
+                  *args, **kwargs):
         if not ax:
             ax = plt.gca()
         if color:
@@ -98,13 +105,16 @@ class Hist1D:
 
         st = ax.step(x, y, where='mid', color=self.color,
                      alpha=alpha,
-                     label=None if filled else label)
+                     label=None if filled else label,
+                     *args, **kwargs)
 
         # if non-zero counts at the edge of a histogram, draw vertical lines at limits
         # 0 is left edge -1 is right edge
         for edge in [0, -1]:
             if y[edge] != 0:
-                ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha)
+                step_lw = plt.getp(st[0], 'linewidth')
+                step_ls = plt.getp(st[0], 'linestyle') 
+                ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha, lw = step_lw, ls=step_ls)
 
         filled = filled if fill_alpha is None else True
 
@@ -251,13 +261,14 @@ class Hist1D:
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, plots=plots, fit_range=fit_range)
 
     def customModel(self, model, ax=None,
-                    alpha: float = __ALPHA__, color=None,
-                    density: bool = True, params=None, fit_range=None):
+                    alpha: float = __ALPHA__, color=None, density: bool = True, 
+                    params=None, fit_range = None, weights=None, plots: bool = True):
         self.model = model
-        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
+        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range,plots=plots, weights=weights)
 
     def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, plots: bool = True, fit_range=None, label=None, loc='best'):
+                  density: bool = True, params=None, plots: bool = True, fit_range=None, 
+                  weights = None, label=None, loc='best'):
 
         if not ax:
             ax = plt.gca()
@@ -294,7 +305,7 @@ class Hist1D:
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
 
-        out = self.model.fit(y, params, x=x, nan_policy='omit')
+        out = self.model.fit(y, params, x=x, nan_policy='omit', weights=weights)
 
         if num_comp > 1 and plots:
             comps = out.eval_components(x=plot_xs)
