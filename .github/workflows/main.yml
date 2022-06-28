@@ -55,3 +55,6 @@ jobs:
       - name: Run Example1
         run: >-
           python Examples/Example_Hist1D.py
+      - name: Run Example2
+        run: >-
+          python Examples/Example_Hist2D.py
