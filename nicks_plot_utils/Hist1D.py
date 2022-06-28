@@ -37,8 +37,8 @@ class Hist1D:
 
         if boost_hist is not None:
             self.hist = boost_hist
-            #set things for plotting:
-            self.bins = len(self.hist.axes[0].centers) 
+            # set things for plotting:
+            self.bins = len(self.hist.axes[0].centers)
             self.left = min(self.hist.axes[0].edges)
             self.right = max(self.hist.axes[0].edges)
             self.xs = np.linspace(self.left, self.right, self.bins*5)
@@ -113,8 +113,9 @@ class Hist1D:
         for edge in [0, -1]:
             if y[edge] != 0:
                 step_lw = plt.getp(st[0], 'linewidth')
-                step_ls = plt.getp(st[0], 'linestyle') 
-                ax.vlines(x[edge], 0, y[edge], color=self.color, alpha=alpha, lw = step_lw, ls=step_ls)
+                step_ls = plt.getp(st[0], 'linestyle')
+                ax.vlines(x[edge], 0, y[edge], color=self.color,
+                          alpha=alpha, lw=step_lw, ls=step_ls)
 
         filled = filled if fill_alpha is None else True
 
@@ -261,14 +262,14 @@ class Hist1D:
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, plots=plots, fit_range=fit_range)
 
     def customModel(self, model, ax=None,
-                    alpha: float = __ALPHA__, color=None, density: bool = True, 
-                    params=None, fit_range = None, weights=None, plots: bool = True):
+                    alpha: float = __ALPHA__, color=None, density: bool = True,
+                    params=None, fit_range=None, weights=None, plots: bool = True):
         self.model = model
-        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range,plots=plots, weights=weights)
+        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range, plots=plots, weights=weights)
 
     def _fitModel(self, ax=None, alpha: float = __ALPHA__, color=None,
-                  density: bool = True, params=None, plots: bool = True, fit_range=None, 
-                  weights = None, label=None, loc='best'):
+                  density: bool = True, params=None, plots: bool = True, fit_range=None,
+                  weights=None, label=None, loc='best'):
 
         if not ax:
             ax = plt.gca()
@@ -305,7 +306,8 @@ class Hist1D:
             for i in range(0, num_comp):
                 pars.update(self.model.components[i].make_params())
 
-        out = self.model.fit(y, params, x=x, nan_policy='omit', weights=weights)
+        out = self.model.fit(
+            y, params, x=x, nan_policy='omit', weights=weights)
 
         if num_comp > 1 and plots:
             comps = out.eval_components(x=plot_xs)
@@ -352,13 +354,6 @@ class Hist1D:
                             density: bool = True, params=None, fit_range=None,
                             *args, **kwargs):
         self.model = DampedOscillatorModel(*args, **kwargs)
-        return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
-
-    def fitDonaich(self, ax=None,
-                   alpha: float = __ALPHA__, color=None,
-                   density: bool = True, params=None, fit_range=None,
-                   *args, **kwargs):
-        self.model = DonaichModel(*args, **kwargs)
         return self._fitModel(ax=ax, alpha=alpha, color=color, density=density, params=params, fit_range=fit_range)
 
     def fitDoniach(self, ax=None,
