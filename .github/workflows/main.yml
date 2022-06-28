@@ -35,7 +35,7 @@ jobs:
         run: >-
           for test in Examples/Example_*.ipynb;
           do
-            runipy $test || echo "Test Failed"
+            jupyter nbconvert --to notebook --inplace --execute
           done;
 
       - name: Build a binary wheel and a source tarball
