@@ -3,14 +3,16 @@ from pathlib import Path
 
 _dir = Path(__file__).resolve().parent
 
-
 with open(f"{_dir}/README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-
-with open(f"{_dir}/nicks_plot_utils/__version__", "r", encoding="utf-8") as fh:
-    version = fh.read()
-    print(version)
+try:
+    with open(f"{_dir}/nicks_plot_utils/__version__", "r", encoding="utf-8") as fh:
+        version = fh.read()
+        print(version)
+except:
+    print(_dir.name.split("-")[-1], flush=True)
+    version = _dir.name.split("-")[-1]
 
 
 setup(
