@@ -53,6 +53,5 @@ jobs:
           GITHUB: ${{ toJson(github) }}
         with:
           notebook: "Examples/Examples_Hist1D.ipynb"
-          params: "Examples/empty.json"
           isReport: False
           poll: True
