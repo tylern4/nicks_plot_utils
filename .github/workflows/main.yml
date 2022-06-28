@@ -39,19 +39,3 @@ jobs:
           --wheel
           --outdir dist/
           .
-  tests:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8, 3.9, "3.10"]
-    steps:
-      - name: run-notebook
-        uses: yaananth/run-notebook@v1
-        env:
-          RUNNER: ${{ toJson(runner) }}
-          SECRETS: ${{ toJson(secrets) }}
-          GITHUB: ${{ toJson(github) }}
-        with:
-          notebook: "Examples/Examples_Hist1D.ipynb"
-          isReport: False
-          poll: True
