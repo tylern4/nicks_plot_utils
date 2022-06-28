@@ -33,6 +33,7 @@ jobs:
           --user
       - name: Testing
         run: >-
+          python -m pip install jupyter && \
           for test in Examples/Example_*.ipynb;
           do
             jupyter nbconvert --to notebook --inplace --execute
