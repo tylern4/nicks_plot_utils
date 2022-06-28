@@ -6,17 +6,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 
-git_version = subprocess.check_output(
-    ['git', 'rev-list', '--count', 'HEAD']).decode("utf-8")[:-1]
-
-with open("nicks_plot_utils/__version__", "r+", encoding="utf-8") as fh:
-    template = fh.read()
-    fh.seek(0)
-    version_parts = list(map(int, template.split('.')))
-    version_parts[-1] += 1
-    version_parts = list(map(str, version_parts))
-    version = ".".join(version_parts)
-    fh.write(version)
+with open("nicks_plot_utils/__version__", "r", encoding="utf-8") as fh:
+    version = fh.read()
+    print(version)
 
 
 setup(
