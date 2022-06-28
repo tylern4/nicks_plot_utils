@@ -51,4 +51,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install pypa/build
         run: >-
-          python -m pip install -e .; python Examples/Example_Hist1D.py
+          python -m pip install -e .
+      - name: Run Example1
+        run: >-
+          python Examples/Example_Hist1D.py

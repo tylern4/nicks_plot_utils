@@ -37,7 +37,7 @@ setup(
                       'boost-histogram',
                       'scipy',
                       'lmfit',
-                      'jupyter'
+                      'pandas'
                       ],
 
     classifiers=[
