@@ -52,9 +52,11 @@ jobs:
       - name: Install pypa/build
         run: >-
           python -m pip install -e .
-      - name: Run Example1
+      - name: Install test dependancies
+          python -m pip install pandas pylandau
+      - name: Test Hist1D
         run: >-
           python Examples/Example_Hist1D.py
-      - name: Run Example2
+      - name: Test Hist2D
         run: >-
           python Examples/Example_Hist2D.py
