@@ -1,12 +1,14 @@
 from setuptools import setup
-import subprocess
+from pathlib import Path
+
+_dir = Path(__file__).resolve().parent
 
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open(f"{_dir}/README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 
-with open("nicks_plot_utils/__version__", "r", encoding="utf-8") as fh:
+with open(f"{_dir}/nicks_plot_utils/__version__", "r", encoding="utf-8") as fh:
     version = fh.read()
     print(version)
 
