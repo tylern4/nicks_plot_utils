@@ -123,7 +123,7 @@ class Hist1D:
             # If filled not defined set it to lines alpha - 0.1
             fill_alpha = fill_alpha if fill_alpha is not None else alpha - 0.1
 
-            ys = self.hist.view()/np.max(self.hist.view()) if density else self.hist.view()
+            ys = self.hist.values()/np.max(self.hist.values()) if density else self.hist.values()
             ys *= factor
             st = ax.fill_between(x, 0, ys,
                                  alpha=fill_alpha,
@@ -202,11 +202,11 @@ class Hist1D:
 
     @property
     def y(self):
-        return self.hist.view()/np.max(self.hist.view())
+        return self.hist.values()/np.max(self.hist.values())
 
     @property
     def y_counts(self):
-        return self.hist.view()
+        return self.hist.values()
 
     def hist_to_xy(self, density: bool = True):
         """Takes a histogram and makes it into a scatter of x,y
@@ -241,9 +241,9 @@ class Hist1D:
 
         x = slic.axes[0].centers
         if density:
-            y = slic.view()/np.max(slic.view())
+            y = slic.values()/np.max(slic.values())
         else:
-            y = slic.view()
+            y = slic.values()
 
         return (x, y)
 
