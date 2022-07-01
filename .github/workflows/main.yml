@@ -54,10 +54,16 @@ jobs:
           python -m pip install -e .
       - name: Install test dependancies
         run: >-
-          python -m pip install pandas pylandau
+          python -m pip install pandas pylandau pytest coverage
       - name: Test Hist1D
         run: >-
           python Examples/Example_Hist1D.py
       - name: Test Hist2D
         run: >-
           python Examples/Example_Hist2D.py
+      - name: Coverage Test
+        run: >-
+          coverage run -m pytest tests
+      - name: Report
+        run: >-
+          coverage report -i -m
