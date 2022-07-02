@@ -1,0 +1,16 @@
+name: science
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - matplotlib
+  - pandas
+  - numpy
+  - jupyter
+  - uproot
+  - pyarrow
+  - fastparquet
+  - ca-certificates
+  - certifi
+  - openssl
+prefix: /Users/tylern/miniforge3/envs/science
