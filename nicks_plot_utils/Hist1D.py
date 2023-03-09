@@ -82,7 +82,7 @@ class Hist1D:
         return self.hist
 
     def histogram(self, ax=None, filled: bool = False, alpha: float = __ALPHA__, fill_alpha: float = None,
-                  color=None, density: bool = True, label: str = None, factor: int = 1.0, loc='best',
+                  color=None, density: bool = True, density_norm: bool = False, label: str = None, factor: int = 1.0, loc='best', show_legend = False,
                   *args, **kwargs):
         if not ax:
             ax = plt.gca()
@@ -94,7 +94,12 @@ class Hist1D:
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
-        x, y = self.hist_to_xy(density=density)
+        # protect against conflicting density scaling
+        if density_norm and density:
+            print("Cannot use density and density_norm simultaneously. Setting: density = False...")
+            density=False
+
+        x, y = self.hist_to_xy(density=density, density_norm=density_norm)
         # Height factor to change max of density plots
         y *= factor
 
@@ -133,12 +138,12 @@ class Hist1D:
                                  )
         if self.name:
             ax.set_xlabel(self.name)
-        if label:
+        if show_legend is True:
             ax.legend(loc=loc)
         return st
 
     def errorbar(self, ax=None, alpha: float = __ALPHA__,
-                 color=None, density: bool = True, label=None,
+                 color=None, density: bool = True, density_norm: bool = False, label=None,
                  errorcalc=None, factor: int = 1.0):
         if not ax:
             ax = plt.gca()
@@ -151,7 +156,19 @@ class Hist1D:
         if not self.color:
             self.color = next(ax._get_lines.prop_cycler)['color']
 
-        x, y = self.hist_to_xy(density=density)
+        # protect against conflicting density scaling
+        if density_norm and density:
+            print("Cannot use density and density_norm simultaneously. Setting: density = False...")
+            density=False
+
+        # if 'errorcalc' not passed, and density(_norm) are used, set uncertainty type:
+        if errorcalc is None:
+            if density:
+                errorcalc = "density"
+            elif density_norm:
+                errorcalc = "density_norm"
+
+        x, y = self.hist_to_xy(density=density, density_norm=density_norm)
         y *= factor
 
         label = label if label else (
@@ -179,6 +196,12 @@ class Hist1D:
             # Use sqrt(N) for errors
             # Need more testing to make sure it follows statistics for density plots
             yerr = np.sqrt(y)
+        elif errorcalc == "density":
+            # Propagate errors for integral normalisation
+            yerr = self.y_maxnorm_err
+        elif errorcalc == "density_norm":
+            # Propagate errors for integral normalisation
+            yerr = self.y_norm_err
         elif callable(errorcalc):
             # If we send in a function use that to compute the errors
             yerr = errorcalc(y)
@@ -205,10 +228,68 @@ class Hist1D:
         return self.hist.values()/np.max(self.hist.values())
 
     @property
+    def y_maxnorm_err(self):
+        '''
+        Propagate uncertainties for distribution normalised by the maximum bin value.
+
+        Z = X / Y
+        dZ/Z = sqrt((dX/X)**2 + (dY/Y)**2)
+
+        '''
+        counts = self.hist.values()
+        counts_err = np.sqrt(counts) # Poisson statistical uncertainty
+        max_factor = self.hist.values().max()
+        scaled_vals = counts / max_factor
+        
+        scaled_err = scaled_vals * np.sqrt(((counts_err / counts)**2 + (np.sqrt(max_factor)/max_factor)**2))
+        
+        return (scaled_err)
+
+    @property
+    def y_norm(self):
+        '''
+        Normalisation, such that the integral of the resulting is equal to 1.
+        Same formula as used by plt.hist, when 'density=True' argument is given.
+        '''
+        counts = self.hist.values()
+        bin_widths = np.diff(self.hist.axes[0].edges)
+        norms = counts / (sum(counts) * bin_widths)
+
+        return norms
+
+    @property
+    def y_norm_err(self):   
+        '''
+        Propagate uncertainties for normalised density distribution (integral = 1).
+
+        Z = X / Y, where X is counts, Y is sum of counts multiplied by bin-width.
+        dZ/Z = sqrt((dX/X)**2 + (dY/Y)**2)
+
+        Y = S * W, where S is sum of counts, W is bin widths.
+        dY/Y = sqrt((dS/S)**2) + (dW/W)**2) = dS/S
+        Bin width, as a property of the histogram, is taken as having zero uncertainty.
+
+        S = V_1 + V_2 + ... V_N, where V_i is the counts value of the i-th bin.
+        dS = sqrt(dV_1**2 + V_2**2 + ... V_N**2)
+        Therefore, 
+        dZ = Z * sqrt((dX/X)**2 + (dS/S)**2)
+        '''
+        counts = self.hist.values()
+        counts_err = np.sqrt(counts) # Poisson statistical uncertainty
+        sum_counts = np.sum(counts)
+        sum_err = np.sqrt(np.sum(np.square(counts_err)))
+
+        bin_widths = np.diff(self.hist.axes[0].edges)
+        norms = counts / (sum(counts) * bin_widths)
+        norms_err = norms * np.sqrt((counts_err/counts)**2 + (sum_err/sum_counts)**2)
+
+        return norms_err
+
+    @property
     def y_counts(self):
         return self.hist.values()
 
-    def hist_to_xy(self, density: bool = True):
+    def hist_to_xy(self, density: bool = True, density_norm: bool = False):
         """Takes a histogram and makes it into a scatter of x,y
         Useful for plotting in different ways and for fitting
 
@@ -220,7 +301,12 @@ class Hist1D:
         """
         # Check if we want density and set y accordingly
         try:
-            y = self.y if density else self.y_counts
+            if density:
+                y = self.y 
+            elif density_norm:
+                y = self.y_norm
+            else: 
+                y= self.y_counts
         except:
             y = self.y_counts
 
