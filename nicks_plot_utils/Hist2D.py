@@ -40,6 +40,7 @@ class Hist2D:
                  yrange: List = None,
                  yname: str = None,
                  boost_hist=None,
+                 colorbar = None,
                  *args, **kwargs) -> None:
 
         self.xname = xname
@@ -107,7 +108,8 @@ class Hist2D:
         return self.hist
 
     def plot(self, ax=None,
-             cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True, log_cmap: bool = False):
+             cmap=None, density: bool = True, zeros: bool = True, log_cmap: bool = False, 
+             colorbar: bool = True, colorbar_params: dict = {}):
         if not ax:
             ax = plt.gca()
         if density:
@@ -134,7 +136,7 @@ class Hist2D:
         else:
             norm = None
 
-        pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T, norm=norm,
+        pc = ax.pcolormesh(*self.hist.axes.edges.T, zvalues.T, norm=norm, linewidth=0, rasterized=True,
                            cmap=cmap if cmap else 'viridis')
 
         ax.set_xlabel(self.xname)
@@ -142,12 +144,15 @@ class Hist2D:
         ax.set_xlim([np.min(self.hist.axes[0]), np.max(self.hist.axes[0])])
         ax.set_ylim([np.min(self.hist.axes[1]), np.max(self.hist.axes[1])])
         if colorbar:
-            plt.gcf().colorbar(pc, ax=ax, aspect=30)
+            if not colorbar_params:
+                colorbar_params = {'aspect':30} 
+            self.colorbar = plt.gcf().colorbar(pc, ax=ax, **colorbar_params)
         return pc
 
     def plot3D(self, ax=None,
                filled: bool = False, alpha: float = __ALPHA__,
-               cmap=None, density: bool = True,  colorbar: bool = True, zeros: bool = True):
+               cmap=None, density: bool = True, zeros: bool = True,
+                colorbar: bool = True, colorbar_params: dict = {}):
         fig = plt.gcf()
         ax = plt.axes(projection='3d')
         if not ax:
@@ -171,7 +176,9 @@ class Hist2D:
         ax.set_xlabel(self.xname)
         ax.set_ylabel(self.yname)
         if colorbar:
-            plt.gcf().colorbar(pc, ax=ax, aspect=30)
+            if not colorbar_params:
+                colorbar_params = {'aspect':30} 
+            self.cbar = plt.gcf().colorbar(pc, ax=ax, **colorbar_params)
         return pc
 
     def fill(self, data_x, data_y):
